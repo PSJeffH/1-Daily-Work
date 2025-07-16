@@ -1,0 +1,72 @@
+<#
+.SYNOPSIS
+    Pulls common Active Directory domain information for administrative review.
+
+.NOTES
+    Author: Code Generator GPT
+    Date: 2025-07-16
+#>
+
+# Requires RSAT: Active Directory PowerShell module
+
+Import-Module ActiveDirectory
+
+Write-Host "Gathering Active Directory Domain Information..." -ForegroundColor Cyan
+
+# Domain Info
+$domain = Get-ADDomain
+$forest = Get-ADForest
+
+Write-Host "`n=== Domain Information ==="
+Write-Host "Domain Name: $($domain.Name)"
+Write-Host "Forest Name: $($forest.Name)"
+Write-Host "NetBIOS Name: $($domain.NetBIOSName)"
+Write-Host "Domain Mode: $($domain.DomainMode)"
+Write-Host "Forest Mode: $($forest.ForestMode)"
+
+# Domain Controllers
+$dcs = Get-ADDomainController -Filter *
+Write-Host "`n=== Domain Controllers ==="
+$dcs | ForEach-Object {
+    Write-Host "DC: $($_.Name), Site: $($_.Site), IPv4: $($_.IPv4Address), OS: $($_.OperatingSystem)"
+}
+
+# FSMO Roles
+Write-Host "`n=== FSMO Role Holders ==="
+$fsmo = @{
+    SchemaMaster      = $forest.SchemaMaster
+    DomainNamingMaster = $forest.DomainNamingMaster
+    PDCEmulator       = $domain.PDCEmulator
+    RIDMaster         = $domain.RIDMaster
+    InfrastructureMaster = $domain.InfrastructureMaster
+}
+$fsmo.GetEnumerator() | ForEach-Object {
+    Write-Host "$($_.Key): $($_.Value)"
+}
+
+# Object Counts
+Write-Host "`n=== AD Object Counts ==="
+$userCount = (Get-ADUser -Filter *).Count
+$computerCount = (Get-ADComputer -Filter *).Count
+$groupCount = (Get-ADGroup -Filter *).Count
+Write-Host "Users: $userCount"
+Write-Host "Computers: $computerCount"
+Write-Host "Groups: $groupCount"
+
+# Group Policies
+Write-Host "`n=== Group Policy Objects ==="
+$gpos = Get-GPO -All
+Write-Host "Total GPOs: $($gpos.Count)"
+
+# Sites and Subnets
+Write-Host "`n=== AD Sites and Subnets ==="
+$sites = Get-ADReplicationSite -Filter *
+$sites | ForEach-Object {
+    Write-Host "Site: $($_.Name)"
+    $subnets = Get-ADReplicationSubnet -Filter "Site -eq '$($_.Name)'"
+    foreach ($subnet in $subnets) {
+        Write-Host "  Subnet: $($subnet.Name)"
+    }
+}
+
+Write-Host "`n=== Script Completed ===" -ForegroundColor Green
